@@ -10,7 +10,7 @@ from aiohttp import web
 
 from pyleaves import Leaves
 from pyrogram.enums import ParseMode
-from pyrogram import Client, filters
+from pyrogram import Client, filters, idle
 from pyrogram.errors import PeerIdInvalid, BadRequest
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -423,8 +423,9 @@ async def main():
         await bot.start()
         LOGGER(__name__).info("Bot started!")
         
-        # Keep running until interrupted
-        await asyncio.Event().wait()
+        # Keep running using pyrogram's idle (processes updates)
+        LOGGER(__name__).info("Bot is now ready to receive messages!")
+        await idle()
         
     except asyncio.CancelledError:
         pass
