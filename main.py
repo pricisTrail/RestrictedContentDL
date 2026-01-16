@@ -50,11 +50,12 @@ bot = Client(
     sleep_threshold=30,
 )
 
-# Client for user session
+# Client for user session (in-memory to avoid AUTH_KEY_DUPLICATED errors)
 user = Client(
-    "user_session",
+    name="user_session",
     workers=100,
     session_string=PyroConf.SESSION_STRING,
+    in_memory=True,  # ✅ Prevents session file conflicts
     max_concurrent_transmissions=1, # ✅ SAFE DEFAULT
     sleep_threshold=30,
 )
