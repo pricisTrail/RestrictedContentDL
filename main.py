@@ -10,7 +10,7 @@ from aiohttp import web
 
 from pyleaves import Leaves
 from pyrogram.enums import ParseMode
-from pyrogram import Client, filters, idle
+from pyrogram import Client, filters
 from pyrogram.errors import PeerIdInvalid, BadRequest
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -72,6 +72,7 @@ def track_task(coro):
 
 @bot.on_message(filters.command("start") & filters.private)
 async def start(_, message: Message):
+    LOGGER(__name__).info(f"Received /start from user {message.from_user.id}")
     welcome_text = (
         "👋 **Welcome to Media Downloader Bot!**\n\n"
         "I can grab photos, videos, audio, and documents from any Telegram post.\n"
@@ -86,6 +87,7 @@ async def start(_, message: Message):
         [[InlineKeyboardButton("Update Channel", url="https://t.me/itsSmartDev")]]
     )
     await message.reply(welcome_text, reply_markup=markup, disable_web_page_preview=True)
+    LOGGER(__name__).info(f"Sent welcome message to user {message.from_user.id}")
 
 
 @bot.on_message(filters.command("help") & filters.private)
@@ -440,9 +442,12 @@ async def main():
             except Exception as e:
                 LOGGER(__name__).warning(f"Failed to send startup notification: {e}")
         
-        # Keep running using pyrogram's idle (processes updates)
+        # Keep running with infinite loop (allows dispatcher to process updates)
         LOGGER(__name__).info("Bot is now ready to receive messages!")
-        await idle()
+        
+        # Simple infinite loop - yields to event loop so dispatcher can process updates
+        while True:
+            await asyncio.sleep(3600)  # Sleep for 1 hour, repeat forever
         
     except asyncio.CancelledError:
         pass
