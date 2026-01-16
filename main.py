@@ -6,6 +6,7 @@ import shutil
 import psutil
 import asyncio
 from time import time
+from aiohttp import web
 
 from pyleaves import Leaves
 from pyrogram.enums import ParseMode
@@ -377,15 +378,70 @@ async def initialize():
     global download_semaphore
     download_semaphore = asyncio.Semaphore(PyroConf.MAX_CONCURRENT_DOWNLOADS)
 
+
+# ============ Health Check Server for Koyeb ============
+async def health_handler(request):
+    """Health check endpoint for Koyeb"""
+    uptime = get_readable_time(time() - PyroConf.BOT_START_TIME)
+    return web.json_response({
+        "status": "healthy",
+        "uptime": uptime,
+        "bot_running": bot.is_connected if hasattr(bot, 'is_connected') else True
+    })
+
+
+async def start_health_server():
+    """Start the health check HTTP server on port 8000"""
+    app = web.Application()
+    app.router.add_get("/", health_handler)
+    app.router.add_get("/health", health_handler)
+    
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    port = int(os.getenv("PORT", 8000))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    
+    LOGGER(__name__).info(f"Health check server running on port {port}")
+    return runner
+
+
+async def main():
+    """Main async function to run both health server and bot"""
+    await initialize()
+    
+    # Start health check server first
+    health_runner = await start_health_server()
+    
+    try:
+        # Start the user session
+        await user.start()
+        LOGGER(__name__).info("User session started!")
+        
+        # Start and run the bot
+        await bot.start()
+        LOGGER(__name__).info("Bot started!")
+        
+        # Keep running until interrupted
+        await asyncio.Event().wait()
+        
+    except asyncio.CancelledError:
+        pass
+    finally:
+        LOGGER(__name__).info("Shutting down...")
+        await bot.stop()
+        await user.stop()
+        await health_runner.cleanup()
+        LOGGER(__name__).info("Bot Stopped")
+
+
 if __name__ == "__main__":
     try:
-        LOGGER(__name__).info("Bot Started!")
-        asyncio.get_event_loop().run_until_complete(initialize())
-        user.start()
-        bot.run()
+        LOGGER(__name__).info("Starting Bot with Health Check Server...")
+        asyncio.run(main())
     except KeyboardInterrupt:
         pass
     except Exception as err:
-        LOGGER(__name__).error(err)
-    finally:
-        LOGGER(__name__).info("Bot Stopped")
+        LOGGER(__name__).error(f"Fatal error: {err}")
+

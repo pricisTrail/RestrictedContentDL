@@ -66,6 +66,26 @@ To stop the bot:
 docker compose down
 ```
 
+### Deploy on Koyeb (Free Tier)
+
+This bot is compatible with Koyeb's free tier **web services**. It includes a built-in HTTP health check server on port 8000.
+
+1. **Create a new Web Service** on Koyeb
+2. **Connect your GitHub repository** or use Docker deployment
+3. **Configure the following settings**:
+   - **Port**: `8000`
+   - **Health Check Path**: `/health` or `/`
+   - **Environment Variables**: Set the same variables as in `config.env`:
+     - `API_ID`
+     - `API_HASH`
+     - `BOT_TOKEN`
+     - `SESSION_STRING`
+
+4. **Deploy** - The bot will start and respond to health checks automatically
+
+> **Important**: The health check server runs alongside the Telegram bot. Koyeb will ping port 8000 to verify the service is running. Without this, deployments get terminated.
+
+
 ## Usage
 
 - **`/start`** – Welcomes you and gives a brief introduction.  

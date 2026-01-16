@@ -16,4 +16,7 @@ RUN pip install -U -r requirements.txt
 
 COPY . /app
 
+# Expose port for health check (required for Koyeb web services)
+EXPOSE 8000
+
 CMD ["python3", "main.py"]
