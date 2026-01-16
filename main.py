@@ -6,7 +6,6 @@ import shutil
 import psutil
 import asyncio
 from time import time
-from aiohttp import web
 
 from pyleaves import Leaves
 from pyrogram.enums import ParseMode
@@ -382,89 +381,91 @@ async def initialize():
 
 
 # ============ Health Check Server for Koyeb ============
-async def health_handler(request):
-    """Health check endpoint for Koyeb"""
-    uptime = get_readable_time(time() - PyroConf.BOT_START_TIME)
-    return web.json_response({
-        "status": "healthy",
-        "uptime": uptime,
-        "bot_running": bot.is_connected if hasattr(bot, 'is_connected') else True
-    })
-
-
-async def start_health_server():
-    """Start the health check HTTP server on port 8000"""
-    app = web.Application()
-    app.router.add_get("/", health_handler)
-    app.router.add_get("/health", health_handler)
+def run_health_server():
+    """Run health check server in a separate thread"""
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    import json
     
-    runner = web.AppRunner(app)
-    await runner.setup()
+    class HealthHandler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            uptime = get_readable_time(time() - PyroConf.BOT_START_TIME)
+            response = {
+                "status": "healthy",
+                "uptime": uptime,
+                "message": "Bot is running"
+            }
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode())
+        
+        def log_message(self, format, *args):
+            # Suppress HTTP request logs
+            pass
     
     port = int(os.getenv("PORT", 8000))
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-    
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
     LOGGER(__name__).info(f"Health check server running on port {port}")
-    return runner
+    server.serve_forever()
 
 
-async def main():
-    """Main async function to run both health server and bot"""
-    await initialize()
-    
-    # Start health check server first
-    health_runner = await start_health_server()
-    
-    try:
-        # Start the user session
-        await user.start()
-        LOGGER(__name__).info("User session started!")
-        
-        # Start and run the bot
-        await bot.start()
-        LOGGER(__name__).info("Bot started!")
-        
-        # Send startup notification to admin
-        if PyroConf.ADMIN_ID and PyroConf.ADMIN_ID != 0:
-            try:
-                import datetime
-                now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                startup_msg = (
-                    "🚀 **Bot Started Successfully!**\n\n"
-                    f"📅 **Time:** `{now}`\n"
-                    f"🔧 **Status:** All systems operational\n"
-                    f"✅ **Health Check:** Running on port 8000\n\n"
-                    "The bot is now ready to receive messages!"
-                )
-                await bot.send_message(PyroConf.ADMIN_ID, startup_msg)
-                LOGGER(__name__).info(f"Startup notification sent to admin {PyroConf.ADMIN_ID}")
-            except Exception as e:
-                LOGGER(__name__).warning(f"Failed to send startup notification: {e}")
-        
-        # Keep running with infinite loop (allows dispatcher to process updates)
-        LOGGER(__name__).info("Bot is now ready to receive messages!")
-        
-        # Simple infinite loop - yields to event loop so dispatcher can process updates
-        while True:
-            await asyncio.sleep(3600)  # Sleep for 1 hour, repeat forever
-        
-    except asyncio.CancelledError:
-        pass
-    finally:
-        LOGGER(__name__).info("Shutting down...")
-        await bot.stop()
-        await user.stop()
-        await health_runner.cleanup()
-        LOGGER(__name__).info("Bot Stopped")
+async def send_startup_notification():
+    """Send startup notification to admin"""
+    if PyroConf.ADMIN_ID and PyroConf.ADMIN_ID != 0:
+        try:
+            import datetime
+            now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            startup_msg = (
+                "🚀 **Bot Started Successfully!**\n\n"
+                f"📅 **Time:** `{now}`\n"
+                f"🔧 **Status:** All systems operational\n"
+                f"✅ **Health Check:** Running on port 8000\n\n"
+                "The bot is now ready to receive messages!"
+            )
+            await bot.send_message(PyroConf.ADMIN_ID, startup_msg)
+            LOGGER(__name__).info(f"Startup notification sent to admin {PyroConf.ADMIN_ID}")
+        except Exception as e:
+            LOGGER(__name__).warning(f"Failed to send startup notification: {e}")
+
+
+@bot.on_message(filters.command("ping") & filters.private)
+async def ping(_, message: Message):
+    """Simple ping command to test if bot is responding"""
+    LOGGER(__name__).info(f"Received /ping from user {message.from_user.id}")
+    await message.reply("🏓 **Pong!** Bot is alive and responding!")
 
 
 if __name__ == "__main__":
+    import threading
+    
     try:
         LOGGER(__name__).info("Starting Bot with Health Check Server...")
-        asyncio.run(main())
+        
+        # Start health check server in a separate thread
+        health_thread = threading.Thread(target=run_health_server, daemon=True)
+        health_thread.start()
+        LOGGER(__name__).info("Health check thread started")
+        
+        # Initialize semaphore
+        asyncio.get_event_loop().run_until_complete(initialize())
+        
+        # Start user session first
+        user.start()
+        LOGGER(__name__).info("User session started!")
+        
+        # Send startup notification (before blocking run())
+        asyncio.get_event_loop().run_until_complete(send_startup_notification())
+        
+        LOGGER(__name__).info("Bot is now ready to receive messages!")
+        
+        # Run the bot (this blocks and handles updates)
+        bot.run()
+        
     except KeyboardInterrupt:
         pass
     except Exception as err:
         LOGGER(__name__).error(f"Fatal error: {err}")
+    finally:
+        LOGGER(__name__).info("Bot Stopped")
+
 
