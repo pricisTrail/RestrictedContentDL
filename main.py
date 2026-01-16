@@ -423,6 +423,23 @@ async def main():
         await bot.start()
         LOGGER(__name__).info("Bot started!")
         
+        # Send startup notification to admin
+        if PyroConf.ADMIN_ID and PyroConf.ADMIN_ID != 0:
+            try:
+                import datetime
+                now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                startup_msg = (
+                    "🚀 **Bot Started Successfully!**\n\n"
+                    f"📅 **Time:** `{now}`\n"
+                    f"🔧 **Status:** All systems operational\n"
+                    f"✅ **Health Check:** Running on port 8000\n\n"
+                    "The bot is now ready to receive messages!"
+                )
+                await bot.send_message(PyroConf.ADMIN_ID, startup_msg)
+                LOGGER(__name__).info(f"Startup notification sent to admin {PyroConf.ADMIN_ID}")
+            except Exception as e:
+                LOGGER(__name__).warning(f"Failed to send startup notification: {e}")
+        
         # Keep running using pyrogram's idle (processes updates)
         LOGGER(__name__).info("Bot is now ready to receive messages!")
         await idle()
