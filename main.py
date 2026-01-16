@@ -36,6 +36,7 @@ from helpers.msg import (
 
 from config import PyroConf
 from logger import LOGGER
+from helpers.channel_config import get_forward_channel_id, set_forward_channel_id, is_channel_forwarding_enabled
 
 # Initialize the bot client
 bot = Client(
@@ -107,7 +108,9 @@ async def help_command(_, message: Message):
         "➤ **Logs**\n"
         "   – Send `/logs` to download the bot’s logs file.\n\n"
         "➤ **Channel Forwarding**\n"
-        "   – Send `/channel` to check the forward channel status.\n\n"
+        "   – Send `/channel` to check status.\n"
+        "   – Send `/setchannel <channel_id>` to set a forward channel.\n"
+        "   – Send `/setchannel off` to disable forwarding.\n\n"
         "➤ **Stats**\n"
         "   – Send `/stats` to view current status:\n\n"
         "**Example**:\n"
@@ -216,10 +219,13 @@ async def handle_download(bot: Client, message: Message, post_url: str):
 
         except (PeerIdInvalid, BadRequest, KeyError):
             await message.reply("**Make sure the user client is part of the chat.**")
+        except ValueError as e:
+            # URL parsing errors - log but don't spam the user
+            LOGGER(__name__).debug(f"URL parsing error: {e}")
         except Exception as e:
             error_message = f"**❌ {str(e)}**"
             await message.reply(error_message)
-            LOGGER(__name__).error(e)
+            LOGGER(__name__).error(f"Download error: {e}")
 
 
 @bot.on_message(filters.command("dl") & filters.private)
@@ -324,10 +330,18 @@ async def download_range(bot: Client, message: Message):
     )
 
 
-@bot.on_message(filters.private & ~filters.command(["start", "help", "dl", "stats", "logs", "killall", "channel", "bdl", "ping"]))
+@bot.on_message(filters.private & ~filters.command(["start", "help", "dl", "stats", "logs", "killall", "channel", "setchannel", "bdl", "ping"]) & ~filters.me)
 async def handle_any_message(bot: Client, message: Message):
+    # Only process text messages that look like valid Telegram URLs
     if message.text and not message.text.startswith("/"):
-        await track_task(handle_download(bot, message, message.text))
+        text = message.text.strip()
+        # Only process if it looks like a valid Telegram post URL
+        if text.startswith(("https://t.me/", "http://t.me/", "https://telegram.me/", "http://telegram.me/")):
+            # Check if it has a message ID (contains at least one slash after the domain)
+            parts = text.replace("https://", "").replace("http://", "").split("/")
+            if len(parts) >= 3:  # domain/channel/message_id
+                await track_task(handle_download(bot, message, text))
+        # Silently ignore non-URL messages - don't spam errors
 
 
 @bot.on_message(filters.command("stats") & filters.private)
@@ -381,22 +395,24 @@ async def cancel_all_tasks(_, message: Message):
 @bot.on_message(filters.command("channel") & filters.private)
 async def channel_status(_, message: Message):
     """Check the forward channel status and bot permissions"""
-    if PyroConf.FORWARD_CHANNEL_ID == 0:
+    channel_id = get_forward_channel_id()
+    
+    if channel_id == 0:
         await message.reply(
             "📢 **Channel Forwarding Status**\n\n"
             "❌ **Status:** Disabled\n\n"
-            "To enable, set `FORWARD_CHANNEL_ID` in your config.env file.\n"
-            "Example: `FORWARD_CHANNEL_ID = -1001234567890`"
+            "To enable, use `/setchannel <channel_id>`\n"
+            "Example: `/setchannel -1001234567890`"
         )
         return
     
     try:
         # Try to get chat info
-        chat = await bot.get_chat(PyroConf.FORWARD_CHANNEL_ID)
+        chat = await bot.get_chat(channel_id)
         
         # Check if bot is admin
         try:
-            bot_member = await bot.get_chat_member(PyroConf.FORWARD_CHANNEL_ID, bot.me.id)
+            bot_member = await bot.get_chat_member(channel_id, bot.me.id)
             is_admin = bot_member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]
             can_post = getattr(bot_member.privileges, 'can_post_messages', True) if bot_member.privileges else True
         except Exception:
@@ -410,9 +426,10 @@ async def channel_status(_, message: Message):
         await message.reply(
             f"📢 **Channel Forwarding Status**\n\n"
             f"{status_emoji} **Channel:** {chat.title}\n"
-            f"🔢 **ID:** `{PyroConf.FORWARD_CHANNEL_ID}`\n\n"
+            f"🔢 **ID:** `{channel_id}`\n\n"
             f"👤 **Bot is Admin:** {admin_status}\n"
             f"📝 **Can Post Messages:** {post_status}\n\n"
+            f"📤 **Mode:** Media sent ONLY to channel (not to user chat)\n\n"
             + ("✅ **Ready to forward media!**" if is_admin and can_post else 
                "⚠️ **Bot needs admin permissions to post in this channel.**")
         )
@@ -420,15 +437,102 @@ async def channel_status(_, message: Message):
         await message.reply(
             "📢 **Channel Forwarding Status**\n\n"
             "❌ **Error:** Invalid channel ID\n\n"
-            f"The channel ID `{PyroConf.FORWARD_CHANNEL_ID}` is not valid.\n"
+            f"The channel ID `{channel_id}` is not valid.\n"
             "Make sure either the bot or user session has access to this channel."
         )
     except Exception as e:
         await message.reply(
             f"📢 **Channel Forwarding Status**\n\n"
             f"❌ **Error:** {str(e)}\n\n"
-            f"Channel ID: `{PyroConf.FORWARD_CHANNEL_ID}`"
+            f"Channel ID: `{channel_id}`"
         )
+
+
+@bot.on_message(filters.command("setchannel") & filters.private)
+async def set_channel(_, message: Message):
+    """Set the forward channel ID dynamically"""
+    # Check if user is admin
+    if message.from_user.id != PyroConf.ADMIN_ID:
+        await message.reply("❌ **Only the bot admin can change channel settings.**")
+        return
+    
+    args = message.text.split()
+    
+    if len(args) < 2:
+        current_channel = get_forward_channel_id()
+        await message.reply(
+            "📢 **Set Forward Channel**\n\n"
+            "**Usage:**\n"
+            "• `/setchannel <channel_id>` - Set forward channel\n"
+            "• `/setchannel off` - Disable forwarding\n\n"
+            f"**Current Channel:** `{current_channel if current_channel != 0 else 'Disabled'}`\n\n"
+            "**How to get channel ID:**\n"
+            "Forward a message from your channel to @userinfobot"
+        )
+        return
+    
+    arg = args[1].lower()
+    
+    # Disable forwarding
+    if arg in ["off", "disable", "0", "none"]:
+        if set_forward_channel_id(0):
+            await message.reply(
+                "✅ **Channel forwarding disabled!**\n\n"
+                "Media will now be sent to the user chat."
+            )
+        else:
+            await message.reply("❌ **Failed to update settings.**")
+        return
+    
+    # Set new channel ID
+    try:
+        channel_id = int(arg)
+    except ValueError:
+        await message.reply(
+            "❌ **Invalid channel ID!**\n\n"
+            "Channel ID must be a number (e.g., `-1001234567890`)"
+        )
+        return
+    
+    # Verify the channel exists and bot has access
+    try:
+        chat = await bot.get_chat(channel_id)
+        
+        # Check if bot is admin
+        try:
+            bot_member = await bot.get_chat_member(channel_id, bot.me.id)
+            is_admin = bot_member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]
+        except Exception:
+            is_admin = False
+        
+        if not is_admin:
+            await message.reply(
+                f"⚠️ **Warning:** Bot is not an admin in **{chat.title}**\n\n"
+                "The bot needs admin permissions to post messages.\n"
+                "Add the bot as admin first, then try again."
+            )
+            return
+        
+        # Save the channel ID
+        if set_forward_channel_id(channel_id):
+            await message.reply(
+                f"✅ **Forward channel set!**\n\n"
+                f"📢 **Channel:** {chat.title}\n"
+                f"🔢 **ID:** `{channel_id}`\n\n"
+                f"📤 All downloaded media will now be sent ONLY to this channel."
+            )
+        else:
+            await message.reply("❌ **Failed to save settings.**")
+            
+    except PeerIdInvalid:
+        await message.reply(
+            "❌ **Invalid channel ID!**\n\n"
+            f"Cannot access channel `{channel_id}`.\n"
+            "Make sure the bot is added to the channel."
+        )
+    except Exception as e:
+        await message.reply(f"❌ **Error:** {str(e)}")
+
 
 
 async def initialize():
