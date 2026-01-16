@@ -30,6 +30,8 @@ from helpers.msg import (
     get_parsed_msg
 )
 
+from config import PyroConf
+
 # Progress bar template
 PROGRESS_BAR = """
 Percentage: {percentage:.2f}% | {current}/{total}
@@ -189,6 +191,104 @@ async def send_media(
             progress=Leaves.progress_for_pyrogram,
             progress_args=progress_args,
         )
+    
+    # Forward to channel if configured
+    await forward_to_channel(bot, media_path, media_type, caption)
+
+
+async def forward_to_channel(bot, media_path, media_type, caption):
+    """Forward media to the configured channel if FORWARD_CHANNEL_ID is set"""
+    if PyroConf.FORWARD_CHANNEL_ID == 0:
+        return  # Channel forwarding disabled
+    
+    try:
+        channel_id = PyroConf.FORWARD_CHANNEL_ID
+        LOGGER(__name__).info(f"Forwarding {media_type} to channel {channel_id}")
+        
+        if media_type == "photo":
+            await bot.send_photo(
+                chat_id=channel_id,
+                photo=media_path,
+                caption=caption or "",
+            )
+        elif media_type == "video":
+            duration, _, _, width, height = await get_media_info(media_path)
+            thumb = await get_video_thumbnail(media_path, duration)
+            await bot.send_video(
+                chat_id=channel_id,
+                video=media_path,
+                duration=duration or 0,
+                width=width or 640,
+                height=height or 480,
+                thumb=thumb,
+                caption=caption or "",
+                supports_streaming=True,
+            )
+        elif media_type == "audio":
+            duration, artist, title, _, _ = await get_media_info(media_path)
+            await bot.send_audio(
+                chat_id=channel_id,
+                audio=media_path,
+                duration=duration,
+                performer=artist,
+                title=title,
+                caption=caption or "",
+            )
+        elif media_type == "document":
+            await bot.send_document(
+                chat_id=channel_id,
+                document=media_path,
+                caption=caption or "",
+            )
+        
+        LOGGER(__name__).info(f"Successfully forwarded {media_type} to channel {channel_id}")
+    except Exception as e:
+        LOGGER(__name__).error(f"Failed to forward to channel: {e}")
+
+
+async def forward_media_group_to_channel(bot, valid_media):
+    """Forward a media group to the configured channel if FORWARD_CHANNEL_ID is set"""
+    if PyroConf.FORWARD_CHANNEL_ID == 0:
+        return  # Channel forwarding disabled
+    
+    try:
+        channel_id = PyroConf.FORWARD_CHANNEL_ID
+        LOGGER(__name__).info(f"Forwarding media group ({len(valid_media)} items) to channel {channel_id}")
+        
+        await bot.send_media_group(chat_id=channel_id, media=valid_media)
+        
+        LOGGER(__name__).info(f"Successfully forwarded media group to channel {channel_id}")
+    except Exception as e:
+        LOGGER(__name__).error(f"Failed to forward media group to channel: {e}")
+        # Try individual uploads as fallback
+        try:
+            for media in valid_media:
+                if isinstance(media, InputMediaPhoto):
+                    await bot.send_photo(
+                        chat_id=channel_id,
+                        photo=media.media,
+                        caption=media.caption,
+                    )
+                elif isinstance(media, InputMediaVideo):
+                    await bot.send_video(
+                        chat_id=channel_id,
+                        video=media.media,
+                        caption=media.caption,
+                    )
+                elif isinstance(media, InputMediaDocument):
+                    await bot.send_document(
+                        chat_id=channel_id,
+                        document=media.media,
+                        caption=media.caption,
+                    )
+                elif isinstance(media, InputMediaAudio):
+                    await bot.send_audio(
+                        chat_id=channel_id,
+                        audio=media.media,
+                        caption=media.caption,
+                    )
+        except Exception as fallback_e:
+            LOGGER(__name__).error(f"Failed individual channel upload fallback: {fallback_e}")
 
 
 async def download_single_media(msg, progress_message, start_time):
@@ -256,6 +356,8 @@ async def processMediaGroup(chat_message, bot, message):
     if valid_media:
         try:
             await bot.send_media_group(chat_id=message.chat.id, media=valid_media)
+            # Forward media group to channel if configured
+            await forward_media_group_to_channel(bot, valid_media)
             await progress_message.delete()
         except Exception:
             await message.reply(

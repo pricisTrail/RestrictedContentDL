@@ -10,8 +10,9 @@ from time import time
 from pyleaves import Leaves
 from pyrogram.enums import ParseMode
 from pyrogram import Client, filters
-from pyrogram.errors import PeerIdInvalid, BadRequest
+from pyrogram.errors import PeerIdInvalid, BadRequest, ChatAdminRequired, ChatWriteForbidden
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.enums import ChatMemberStatus
 
 from helpers.utils import (
     processMediaGroup,
@@ -105,6 +106,8 @@ async def help_command(_, message: Message):
         "   – Send `/killall` to cancel any pending downloads.\n\n"
         "➤ **Logs**\n"
         "   – Send `/logs` to download the bot’s logs file.\n\n"
+        "➤ **Channel Forwarding**\n"
+        "   – Send `/channel` to check the forward channel status.\n\n"
         "➤ **Stats**\n"
         "   – Send `/stats` to view current status:\n\n"
         "**Example**:\n"
@@ -321,7 +324,7 @@ async def download_range(bot: Client, message: Message):
     )
 
 
-@bot.on_message(filters.private & ~filters.command(["start", "help", "dl", "stats", "logs", "killall"]))
+@bot.on_message(filters.private & ~filters.command(["start", "help", "dl", "stats", "logs", "killall", "channel", "bdl", "ping"]))
 async def handle_any_message(bot: Client, message: Message):
     if message.text and not message.text.startswith("/"):
         await track_task(handle_download(bot, message, message.text))
@@ -373,6 +376,59 @@ async def cancel_all_tasks(_, message: Message):
             task.cancel()
             cancelled += 1
     await message.reply(f"**Cancelled {cancelled} running task(s).**")
+
+
+@bot.on_message(filters.command("channel") & filters.private)
+async def channel_status(_, message: Message):
+    """Check the forward channel status and bot permissions"""
+    if PyroConf.FORWARD_CHANNEL_ID == 0:
+        await message.reply(
+            "📢 **Channel Forwarding Status**\n\n"
+            "❌ **Status:** Disabled\n\n"
+            "To enable, set `FORWARD_CHANNEL_ID` in your config.env file.\n"
+            "Example: `FORWARD_CHANNEL_ID = -1001234567890`"
+        )
+        return
+    
+    try:
+        # Try to get chat info
+        chat = await bot.get_chat(PyroConf.FORWARD_CHANNEL_ID)
+        
+        # Check if bot is admin
+        try:
+            bot_member = await bot.get_chat_member(PyroConf.FORWARD_CHANNEL_ID, bot.me.id)
+            is_admin = bot_member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]
+            can_post = getattr(bot_member.privileges, 'can_post_messages', True) if bot_member.privileges else True
+        except Exception:
+            is_admin = False
+            can_post = False
+        
+        status_emoji = "✅" if is_admin and can_post else "⚠️"
+        admin_status = "Yes" if is_admin else "No"
+        post_status = "Yes" if can_post else "No"
+        
+        await message.reply(
+            f"📢 **Channel Forwarding Status**\n\n"
+            f"{status_emoji} **Channel:** {chat.title}\n"
+            f"🔢 **ID:** `{PyroConf.FORWARD_CHANNEL_ID}`\n\n"
+            f"👤 **Bot is Admin:** {admin_status}\n"
+            f"📝 **Can Post Messages:** {post_status}\n\n"
+            + ("✅ **Ready to forward media!**" if is_admin and can_post else 
+               "⚠️ **Bot needs admin permissions to post in this channel.**")
+        )
+    except PeerIdInvalid:
+        await message.reply(
+            "📢 **Channel Forwarding Status**\n\n"
+            "❌ **Error:** Invalid channel ID\n\n"
+            f"The channel ID `{PyroConf.FORWARD_CHANNEL_ID}` is not valid.\n"
+            "Make sure either the bot or user session has access to this channel."
+        )
+    except Exception as e:
+        await message.reply(
+            f"📢 **Channel Forwarding Status**\n\n"
+            f"❌ **Error:** {str(e)}\n\n"
+            f"Channel ID: `{PyroConf.FORWARD_CHANNEL_ID}`"
+        )
 
 
 async def initialize():

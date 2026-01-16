@@ -37,3 +37,6 @@ class PyroConf(object):
     BATCH_SIZE = int(getenv("BATCH_SIZE", "10"))
     FLOOD_WAIT_DELAY = int(getenv("FLOOD_WAIT_DELAY", "3"))
 
+    # Forward channel configuration - Bot must be admin in this channel
+    FORWARD_CHANNEL_ID = int(getenv("FORWARD_CHANNEL_ID", "0"))
+
