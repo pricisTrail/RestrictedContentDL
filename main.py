@@ -920,6 +920,92 @@ async def ping(_, message: Message):
     await message.reply("🏓 **Pong!** Bot is alive and responding!")
 
 
+async def send_shutdown_notification(reason: str = "Manual shutdown"):
+    """Send shutdown notification to admin"""
+    if PyroConf.ADMIN_ID and PyroConf.ADMIN_ID != 0:
+        try:
+            import datetime
+            now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Calculate uptime
+            uptime_seconds = int(time() - PyroConf.BOT_START_TIME)
+            hours, remainder = divmod(uptime_seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            uptime_str = f"{hours}h {minutes}m {seconds}s"
+            
+            shutdown_msg = (
+                "🔴 **Bot Shutting Down**\n\n"
+                f"📅 **Time:** `{now}`\n"
+                f"⏱️ **Uptime:** {uptime_str}\n"
+                f"📝 **Reason:** {reason}\n\n"
+                "The bot will restart shortly if auto-restart is enabled."
+            )
+            await bot.send_message(PyroConf.ADMIN_ID, shutdown_msg)
+            LOGGER(__name__).info(f"Shutdown notification sent to admin {PyroConf.ADMIN_ID}")
+        except Exception as e:
+            LOGGER(__name__).warning(f"Failed to send shutdown notification: {e}")
+
+
+# Global flag to prevent double shutdown
+_shutdown_initiated = False
+
+
+async def graceful_shutdown(reason: str = "Signal received"):
+    """Perform graceful shutdown with notification"""
+    global _shutdown_initiated
+    if _shutdown_initiated:
+        return
+    _shutdown_initiated = True
+    
+    LOGGER(__name__).info(f"Initiating graceful shutdown: {reason}")
+    
+    # Send shutdown notification
+    try:
+        await send_shutdown_notification(reason)
+    except Exception as e:
+        LOGGER(__name__).warning(f"Could not send shutdown notification: {e}")
+    
+    # Cleanup sessions
+    if session_mgr:
+        try:
+            await session_mgr.cleanup()
+        except Exception as e:
+            LOGGER(__name__).warning(f"Error during session cleanup: {e}")
+    
+    # Stop bot
+    try:
+        await bot.stop()
+    except Exception as e:
+        LOGGER(__name__).warning(f"Error stopping bot: {e}")
+    
+    LOGGER(__name__).info("Graceful shutdown complete")
+
+
+def setup_signal_handlers():
+    """Setup signal handlers for graceful shutdown"""
+    import signal
+    
+    def signal_handler(signum, frame):
+        signal_name = signal.Signals(signum).name
+        LOGGER(__name__).info(f"Received signal: {signal_name}")
+        
+        # Schedule graceful shutdown
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(graceful_shutdown(f"Received {signal_name}"))
+            else:
+                loop.run_until_complete(graceful_shutdown(f"Received {signal_name}"))
+        except Exception as e:
+            LOGGER(__name__).error(f"Error in signal handler: {e}")
+    
+    # Register signal handlers
+    signal.signal(signal.SIGTERM, signal_handler)  # Koyeb sends SIGTERM
+    signal.signal(signal.SIGINT, signal_handler)   # Ctrl+C
+    
+    LOGGER(__name__).info("Signal handlers registered for graceful shutdown")
+
+
 if __name__ == "__main__":
     import threading
     
@@ -930,6 +1016,9 @@ if __name__ == "__main__":
         health_thread = threading.Thread(target=run_health_server, daemon=True)
         health_thread.start()
         LOGGER(__name__).info("Health check thread started")
+        
+        # Setup signal handlers for graceful shutdown
+        setup_signal_handlers()
         
         # Initialize everything (semaphore, database, sessions)
         asyncio.get_event_loop().run_until_complete(initialize())
@@ -948,11 +1037,14 @@ if __name__ == "__main__":
         asyncio.get_event_loop().run_until_complete(idle())
         
     except KeyboardInterrupt:
-        pass
+        LOGGER(__name__).info("KeyboardInterrupt received")
+        asyncio.get_event_loop().run_until_complete(graceful_shutdown("KeyboardInterrupt"))
     except Exception as err:
         LOGGER(__name__).error(f"Fatal error: {err}")
+        asyncio.get_event_loop().run_until_complete(graceful_shutdown(f"Fatal error: {err}"))
     finally:
-        # Cleanup sessions
-        if session_mgr:
-            asyncio.get_event_loop().run_until_complete(session_mgr.cleanup())
+        if not _shutdown_initiated:
+            # Cleanup sessions if not already done
+            if session_mgr:
+                asyncio.get_event_loop().run_until_complete(session_mgr.cleanup())
         LOGGER(__name__).info("Bot Stopped")

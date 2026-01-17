@@ -1,3 +1,36 @@
 [18-Jan-26 12:40:49 AM - INFO] - <module>() - Line 927: __main__ - Starting Bot with Health Check Server...
 [18-Jan-26 12:40:49 AM - INFO] - <module>() - Line 932: __main__ - Health check thread started
 [18-Jan-26 12:40:49 AM - INFO] - initialize() - Line 820: __main__ - Connecting to MongoDB...
+[18-Jan-26 12:40:50 AM - INFO] - run_health_server() - Line 875: __main__ - Health check server running on port 8000
+[18-Jan-26 12:40:50 AM - INFO] - connect() - Line 38: helpers.database - Successfully connected to MongoDB
+[18-Jan-26 12:40:50 AM - INFO] - initialize() - Line 823: __main__ - MongoDB connected successfully!
+[18-Jan-26 12:40:50 AM - WARNING] - initialize_env_session() - Line 58: helpers.session_manager - Failed to initialize ENV session: unpack requires a buffer of 271 bytes
+[18-Jan-26 12:40:53 AM - INFO] - load_sessions_from_db() - Line 93: helpers.session_manager - Loaded session for user 2115233976
+[18-Jan-26 12:40:53 AM - INFO] - initialize() - Line 841: __main__ - Loaded 1 session(s) from database
+[18-Jan-26 12:40:53 AM - INFO] - initialize() - Line 847: __main__ - Loaded forward channel from database: -1003613842345
+[18-Jan-26 12:41:00 AM - INFO] - <module>() - Line 939: __main__ - Bot started!
+[18-Jan-26 12:41:00 AM - INFO] - send_startup_notification() - Line 911: __main__ - Startup notification sent to admin 2115233976
+[18-Jan-26 12:41:00 AM - INFO] - <module>() - Line 944: __main__ - Bot is now ready to receive messages!
+[18-Jan-26 12:41:10 AM - INFO] - handle_download() - Line 277: __main__ - Downloading media from URL: https://t.me/c/2488421380/932
+[18-Jan-26 12:41:10 AM - INFO] - handle_download() - Line 301: __main__ - Message type check - media_group_id: None, media: False, text: True, caption: False
+[18-Jan-26 12:41:10 AM - INFO] - handle_download() - Line 368: __main__ - Processing text-only message, FORWARD_CHANNEL_ID=-1003613842345, is_batch=True
+[18-Jan-26 12:41:10 AM - INFO] - handle_download() - Line 378: __main__ - Text forwarded to channel -1003613842345
+[18-Jan-26 12:41:10 AM - INFO] - handle_download() - Line 277: __main__ - Downloading media from URL: https://t.me/c/2488421380/938
+[18-Jan-26 12:41:10 AM - INFO] - handle_download() - Line 301: __main__ - Message type check - media_group_id: None, media: False, text: True, caption: False
+[18-Jan-26 12:41:10 AM - INFO] - handle_download() - Line 368: __main__ - Processing text-only message, FORWARD_CHANNEL_ID=-1003613842345, is_batch=True
+[18-Jan-26 12:41:10 AM - INFO] - handle_download() - Line 378: __main__ - Text forwarded to channel -1003613842345
+[18-Jan-26 12:41:26 AM - INFO] - handle_download() - Line 277: __main__ - Downloading media from URL: https://t.me/c/2488421380/932
+[18-Jan-26 12:41:26 AM - INFO] - handle_download() - Line 301: __main__ - Message type check - media_group_id: None, media: False, text: True, caption: False
+[18-Jan-26 12:41:26 AM - INFO] - handle_download() - Line 368: __main__ - Processing text-only message, FORWARD_CHANNEL_ID=-1003613842345, is_batch=True
+[18-Jan-26 12:41:27 AM - INFO] - handle_download() - Line 378: __main__ - Text forwarded to channel -1003613842345
+[18-Jan-26 12:41:27 AM - INFO] - handle_download() - Line 277: __main__ - Downloading media from URL: https://t.me/c/2488421380/938
+[18-Jan-26 12:41:27 AM - INFO] - handle_download() - Line 301: __main__ - Message type check - media_group_id: None, media: False, text: True, caption: False
+[18-Jan-26 12:41:27 AM - INFO] - handle_download() - Line 368: __main__ - Processing text-only message, FORWARD_CHANNEL_ID=-1003613842345, is_batch=True
+[18-Jan-26 12:41:27 AM - INFO] - handle_download() - Line 378: __main__ - Text forwarded to channel -1003613842345
+[18-Jan-26 12:41:54 AM - INFO] - handle_download() - Line 277: __main__ - Downloading media from URL: https://t.me/c/2488421380/938
+[18-Jan-26 12:41:54 AM - INFO] - handle_download() - Line 301: __main__ - Message type check - media_group_id: None, media: False, text: True, caption: False
+[18-Jan-26 12:41:54 AM - INFO] - handle_download() - Line 368: __main__ - Processing text-only message, FORWARD_CHANNEL_ID=-1003613842345, is_batch=False
+[18-Jan-26 12:41:55 AM - INFO] - handle_download() - Line 378: __main__ - Text forwarded to channel -1003613842345
+[18-Jan-26 12:47:15 AM - INFO] - signal_handler() - Line 76: root - Stop signal received (SIGINT). Exiting...
+[18-Jan-26 12:47:15 AM - ERROR] - <module>() - Line 953: __main__ - Fatal error: An asyncio.Future, a coroutine or an awaitable is required
+[18-Jan-26 12:47:15 AM - INFO] - <module>() - Line 958: __main__ - Bot Stopped
