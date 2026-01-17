@@ -1,32 +1,3 @@
-[18-Jan-26 12:07:20 AM - INFO] - <module>() - Line 903: __main__ - Starting Bot with Health Check Server...
-[18-Jan-26 12:07:20 AM - INFO] - <module>() - Line 908: __main__ - Health check thread started
-[18-Jan-26 12:07:20 AM - INFO] - initialize() - Line 796: __main__ - Connecting to MongoDB...
-[18-Jan-26 12:07:21 AM - INFO] - run_health_server() - Line 851: __main__ - Health check server running on port 8000
-[18-Jan-26 12:07:21 AM - INFO] - connect() - Line 38: helpers.database - Successfully connected to MongoDB
-[18-Jan-26 12:07:21 AM - INFO] - initialize() - Line 799: __main__ - MongoDB connected successfully!
-[18-Jan-26 12:07:21 AM - WARNING] - initialize_env_session() - Line 58: helpers.session_manager - Failed to initialize ENV session: unpack requires a buffer of 271 bytes
-[18-Jan-26 12:07:35 AM - INFO] - load_sessions_from_db() - Line 93: helpers.session_manager - Loaded session for user 2115233976
-[18-Jan-26 12:07:35 AM - INFO] - initialize() - Line 817: __main__ - Loaded 1 session(s) from database
-[18-Jan-26 12:07:35 AM - INFO] - initialize() - Line 823: __main__ - Loaded forward channel from database: -1003613842345
-[18-Jan-26 12:07:35 AM - INFO] - <module>() - Line 915: __main__ - Bot started!
-[18-Jan-26 12:07:36 AM - INFO] - send_startup_notification() - Line 887: __main__ - Startup notification sent to admin 2115233976
-[18-Jan-26 12:07:36 AM - INFO] - <module>() - Line 920: __main__ - Bot is now ready to receive messages!
-[18-Jan-26 12:07:43 AM - INFO] - handle_download() - Line 277: __main__ - Downloading media from URL: https://t.me/c/2488421380/1402
-[18-Jan-26 12:07:43 AM - INFO] - processMediaGroup() - Line 568: helpers.utils - Downloading media group with 5 items...
-[18-Jan-26 12:08:46 AM - INFO] - processMediaGroup() - Line 591: helpers.utils - Valid media count: 5
-[18-Jan-26 12:08:46 AM - INFO] - processMediaGroup() - Line 616: helpers.utils - Validated 5 media files for upload
-[18-Jan-26 12:08:46 AM - INFO] - processMediaGroup() - Line 626: helpers.utils - Uploading media group directly to channel -1003613842345
-[18-Jan-26 12:09:46 AM - ERROR] - processMediaGroup() - Line 639: helpers.utils - Failed to upload media group to channel: Messages.__init__() missing 1 required keyword-only argument: 'topics'
-[18-Jan-26 12:09:46 AM - INFO] - processMediaGroup() - Line 643: helpers.utils - Detected Pyrogram 'topics' bug - upload likely succeeded
-[18-Jan-26 12:09:46 AM - INFO] - processMediaGroup() - Line 649: helpers.utils - Bin channel will use re-upload method (no message IDs available)
-[18-Jan-26 12:09:46 AM - INFO] - forward_media_group_to_bin() - Line 499: helpers.utils - Retrieved 5 message IDs via user client for bin forwarding
-[18-Jan-26 12:09:46 AM - INFO] - copy_messages_to_bin() - Line 451: helpers.utils - Copying 5 messages from -1003613842345 to bin channel -1003604902160
-[18-Jan-26 12:09:48 AM - INFO] - copy_messages_to_bin() - Line 466: helpers.utils - Successfully copied messages to bin channel -1003604902160
-[18-Jan-26 12:09:48 AM - INFO] - cleanup_download() - Line 19: helpers.files - Cleaning Download: E:\jan 2026\tg bots\RestrictedContentDL\downloads\SBT Problems.pdf
-[18-Jan-26 12:09:48 AM - INFO] - cleanup_download() - Line 19: helpers.files - Cleaning Download: E:\jan 2026\tg bots\RestrictedContentDL\downloads\Irodov Selected Problems.pdf
-[18-Jan-26 12:09:48 AM - INFO] - cleanup_download() - Line 19: helpers.files - Cleaning Download: E:\jan 2026\tg bots\RestrictedContentDL\downloads\200 More PPP Problems.pdf
-[18-Jan-26 12:09:48 AM - INFO] - cleanup_download() - Line 19: helpers.files - Cleaning Download: E:\jan 2026\tg bots\RestrictedContentDL\downloads\200 More PPP Problems 2.pdf
-[18-Jan-26 12:09:48 AM - INFO] - cleanup_download() - Line 19: helpers.files - Cleaning Download: E:\jan 2026\tg bots\RestrictedContentDL\downloads\Krotov Selected Problems.pdf
-[18-Jan-26 12:14:05 AM - INFO] - signal_handler() - Line 76: root - Stop signal received (SIGINT). Exiting...
-[18-Jan-26 12:14:05 AM - ERROR] - <module>() - Line 929: __main__ - Fatal error: An asyncio.Future, a coroutine or an awaitable is required
-[18-Jan-26 12:14:05 AM - INFO] - <module>() - Line 934: __main__ - Bot Stopped
+[18-Jan-26 12:40:49 AM - INFO] - <module>() - Line 927: __main__ - Starting Bot with Health Check Server...
+[18-Jan-26 12:40:49 AM - INFO] - <module>() - Line 932: __main__ - Health check thread started
+[18-Jan-26 12:40:49 AM - INFO] - initialize() - Line 820: __main__ - Connecting to MongoDB...

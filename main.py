@@ -297,6 +297,13 @@ async def handle_download(bot: Client, message: Message, post_url: str, is_batch
                 chat_message.text or "", chat_message.entities
             )
 
+            # Log message type for debugging
+            LOGGER(__name__).info(
+                f"Message type check - media_group_id: {chat_message.media_group_id}, "
+                f"media: {bool(chat_message.media)}, text: {bool(chat_message.text)}, "
+                f"caption: {bool(chat_message.caption)}"
+            )
+            
             if chat_message.media_group_id:
                 if not await processMediaGroup(chat_message, bot, message, is_batch=is_batch, user_client=user_client):
                     if not is_batch:
