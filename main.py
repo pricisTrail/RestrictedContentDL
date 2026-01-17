@@ -358,6 +358,7 @@ async def handle_download(bot: Client, message: Message, post_url: str, is_batch
             elif chat_message.text or chat_message.caption:
                 text_content = parsed_text or parsed_caption
                 if text_content:
+                    LOGGER(__name__).info(f"Processing text-only message, FORWARD_CHANNEL_ID={PyroConf.FORWARD_CHANNEL_ID}, is_batch={is_batch}")
                     # If forward channel is set, send text to channel instead of user chat
                     if PyroConf.FORWARD_CHANNEL_ID != 0:
                         try:
@@ -373,7 +374,10 @@ async def handle_download(bot: Client, message: Message, post_url: str, is_batch
                             if not is_batch:
                                 await message.reply(f"❌ Failed to forward text to channel: {e}")
                     else:
-                        await message.reply(text_content)
+                        # No channel configured, send to user chat (but skip in batch mode)
+                        if not is_batch:
+                            await message.reply(text_content)
+                        LOGGER(__name__).info(f"Text sent to user chat (no forward channel configured)")
             else:
                 await message.reply("**No media or text found in the post URL.**")
 
