@@ -10,16 +10,10 @@ try:
 except:
     pass
 
-    if not getenv("BOT_TOKEN") or not getenv("BOT_TOKEN").count(":") == 1:
-        print("Error: BOT_TOKEN must be in format '123456:abcdefghijklmnopqrstuvwxyz'")
-        exit(1)
-
-    if (
-        not getenv("SESSION_STRING")
-        or getenv("SESSION_STRING") == "xxxxxxxxxxxxxxxxxxxxxxx"
-    ):
-        print("Error: SESSION_STRING must be set with a valid string")
-        exit(1)
+# Validate bot token
+if not getenv("BOT_TOKEN") or not getenv("BOT_TOKEN").count(":") == 1:
+    print("Error: BOT_TOKEN must be in format '123456:abcdefghijklmnopqrstuvwxyz'")
+    exit(1)
 
 
 # Pyrogram setup
@@ -27,7 +21,13 @@ class PyroConf(object):
     API_ID = int(getenv("API_ID", "6"))
     API_HASH = getenv("API_HASH", "eb06d4abfb49dc3eeb1aeb98ae0f581e")
     BOT_TOKEN = getenv("BOT_TOKEN")
-    SESSION_STRING = getenv("SESSION_STRING")
+    
+    # SESSION_STRING is now optional - sessions can be created via /login command
+    SESSION_STRING = getenv("SESSION_STRING", "")
+    
+    # MongoDB URI for storing user sessions (required for multi-user support)
+    MONGO_URI = getenv("MONGO_URI", "")
+    
     BOT_START_TIME = time()
 
     # Admin user ID to receive startup notifications (your Telegram user ID)
@@ -39,4 +39,8 @@ class PyroConf(object):
 
     # Forward channel configuration - Bot must be admin in this channel
     FORWARD_CHANNEL_ID = int(getenv("FORWARD_CHANNEL_ID", "0"))
+
+    # Bin channel - ALL media gets forwarded here as backup (regardless of FORWARD_CHANNEL_ID)
+    # Bot must be admin in this channel
+    BIN_CHANNEL_ID = int(getenv("BIN_CHANNEL_ID", "0"))
 

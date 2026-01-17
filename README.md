@@ -19,6 +19,9 @@
 - ✅ Supports downloading from both single media posts and media groups.
 - 🔄 Progress bar showing real-time downloading progress.
 - ✍️ Copy text messages or captions from Telegram posts.
+- 🔐 **Multi-user login support** - Users can login with their own Telegram accounts via `/login` command.
+- 💾 **MongoDB session storage** - Sessions persist across restarts and redeployments.
+- 📢 **Channel forwarding** - Automatically forward downloaded media to a configured channel.
 
 ## Requirements
 
@@ -27,20 +30,24 @@ Before you begin, ensure you have met the following requirements:
 - Docker and Docker Compose installed on your system
 - A Telegram bot token (you can get one from [@BotFather](https://t.me/BotFather) on Telegram)
 - API ID and Hash: You can get these by creating an application on [my.telegram.org](https://my.telegram.org)
-- To Get `SESSION_STRING` Open [@SmartUtilBot](https://t.me/SmartUtilBot). Bot and use /pyro command and then follow all instructions
+- **MongoDB database** (required for session storage) - You can use [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) free tier
+- ~~SESSION_STRING~~ - No longer required! Users can now login directly via the `/login` command.
 
-> **Note**: All dependencies including Python, `pyrofork`, `pyleaves`, `tgcrypto`, and `ffmpeg` are automatically installed when you deploy with Docker Compose.
+> **Note**: All dependencies including Python, `pyrofork`, `pyleaves`, `tgcrypto`, `motor`, and `ffmpeg` are automatically installed when you deploy with Docker Compose.
 
 ## Configuration
 
 1. Open the `config.env` file in your favorite text editor.
-2. Replace the placeholders for `API_ID`, `API_HASH`, `SESSION_STRING`, and `BOT_TOKEN` with your actual values:
+2. Replace the placeholders for `API_ID`, `API_HASH`, `BOT_TOKEN`, and `MONGO_URI` with your actual values:
    - **`API_ID`**: Your API ID from [my.telegram.org](https://my.telegram.org).
    - **`API_HASH`**: Your API Hash from [my.telegram.org](https://my.telegram.org).
-   - **`SESSION_STRING`**: The session string generated using [@SmartUtilBot](https://t.me/SmartUtilBot).
    - **`BOT_TOKEN`**: The token you obtained from [@BotFather](https://t.me/BotFather).
+   - **`MONGO_URI`**: Your MongoDB connection string (e.g., `mongodb+srv://user:pass@cluster.mongodb.net/`).
+   - **`SESSION_STRING`** (optional): Legacy fallback session. Leave empty if using `/login` command.
+   - **`ADMIN_ID`** (optional): Your Telegram user ID to receive startup notifications.
+   - **`FORWARD_CHANNEL_ID`** (optional): Channel ID to forward downloaded media to.
 
-3. Optional performance settings (add to `config.py`):
+3. Optional performance settings:
    - **`MAX_CONCURRENT_DOWNLOADS`**: Number of simultaneous downloads (default: 3)
    - **`BATCH_SIZE`**: Number of posts to process in parallel during batch downloads (default: 10)
    - **`FLOOD_WAIT_DELAY`**: Delay in seconds between batch groups to avoid flood limits (default: 3)
@@ -79,26 +86,52 @@ This bot is compatible with Koyeb's free tier **web services**. It includes a bu
      - `API_ID`
      - `API_HASH`
      - `BOT_TOKEN`
-     - `SESSION_STRING`
+     - `MONGO_URI`
+     - `ADMIN_ID` (optional)
 
 4. **Deploy** - The bot will start and respond to health checks automatically
 
-> **Important**: The health check server runs alongside the Telegram bot. Koyeb will ping port 8000 to verify the service is running. Without this, deployments get terminated.
-
+> **Important**: With MongoDB session storage, you no longer get `AUTH_KEY_DUPLICATED` errors on redeployment! Sessions are stored in the database and loaded on startup.
 
 ## Usage
 
+### Session Commands (New!)
+- **`/login`** – Start the login process to connect your Telegram account.
+- **`/logout`** – Remove your session from the bot.
+- **`/session`** – Check your current session status.
+- **`/cancel`** – Cancel an ongoing login process.
+
+### Download Commands
 - **`/start`** – Welcomes you and gives a brief introduction.  
 - **`/help`** – Shows detailed instructions and examples.  
 - **`/dl <post_URL>`** or simply paste a Telegram post link – Fetch photos, videos, audio, or documents from that post.  
 - **`/bdl <start_link> <end_link>`** – Batch-download a range of posts in one go.  
 
   > 💡 Example: `/bdl https://t.me/mychannel/100 https://t.me/mychannel/120`  
-- **`/killall`** – Cancel any pending downloads if the bot hangs.  
-- **`/logs`** – Download the bot’s logs file.  
-- **`/stats`** – View current status (uptime, disk, memory, network, CPU, etc.).  
 
-> **Note:** Make sure that your user session is a member of the source chat or channel before downloading.
+### Utility Commands
+- **`/killall`** – Cancel any pending downloads if the bot hangs.  
+- **`/logs`** – Download the bot's logs file.  
+- **`/stats`** – View current status (uptime, sessions, disk, memory, network, CPU, etc.).
+- **`/channel`** – Check the forward channel status and bot permissions.
+- **`/ping`** – Check if the bot is responding.
+
+## Login Flow
+
+1. Send `/login` to the bot
+2. Enter your phone number with country code (e.g., `+1234567890`)
+3. Enter the verification code sent to your Telegram app
+4. If you have 2FA enabled, enter your password
+5. Done! Your session is saved and will persist across bot restarts.
+
+> **Security Note**: Your password is never stored. Only the session string is saved in MongoDB.
+
+## Multi-User Support
+
+- Each user can login with their own Telegram account
+- Sessions are isolated per user
+- Users can only access chats they are members of
+- The admin can also provide a fallback `SESSION_STRING` in config for shared access
 
 ## Author
 
