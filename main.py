@@ -451,6 +451,9 @@ async def download_range(bot: Client, message: Message):
     batch_tasks = []
     batch_msg_ids = []  # Track message IDs for current batch
     BATCH_SIZE = PyroConf.BATCH_SIZE
+    
+    # Track processed media groups to avoid duplicate downloads
+    processed_media_groups = set()
 
     for msg_id in range(start_id, end_id + 1):
         url = f"{prefix}/{msg_id}"
@@ -462,6 +465,16 @@ async def download_range(bot: Client, message: Message):
                 not_found += 1
                 LOGGER(__name__).debug(f"Message {msg_id} does not exist")
                 continue
+            
+            # Skip if this message is part of a media group we've already processed
+            if chat_msg.media_group_id:
+                if chat_msg.media_group_id in processed_media_groups:
+                    LOGGER(__name__).debug(f"Skipping message {msg_id} - media group {chat_msg.media_group_id} already processed")
+                    skipped += 1
+                    continue
+                # Mark this media group as being processed
+                processed_media_groups.add(chat_msg.media_group_id)
+                LOGGER(__name__).info(f"Processing media group {chat_msg.media_group_id} starting from message {msg_id}")
 
             has_media = bool(chat_msg.media_group_id or chat_msg.media)
             has_text  = bool(chat_msg.text or chat_msg.caption)
