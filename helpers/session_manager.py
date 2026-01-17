@@ -47,7 +47,7 @@ class SessionManager:
                     "env_user_session",
                     workers=100,
                     session_string=PyroConf.SESSION_STRING,
-                    max_concurrent_transmissions=1,
+                    max_concurrent_transmissions=PyroConf.MAX_CONCURRENT_TRANSMISSIONS,
                     sleep_threshold=30,
                 )
                 await self.env_client.start()
@@ -79,7 +79,7 @@ class SessionManager:
                         f"user_session_{user_id}",
                         workers=100,
                         session_string=session_string,
-                        max_concurrent_transmissions=1,
+                        max_concurrent_transmissions=PyroConf.MAX_CONCURRENT_TRANSMISSIONS,
                         sleep_threshold=30,
                     )
                     await client.start()
@@ -222,7 +222,7 @@ class SessionManager:
                 f"user_session_{user_id}",
                 workers=100,
                 session_string=session_string,
-                max_concurrent_transmissions=1,
+                max_concurrent_transmissions=PyroConf.MAX_CONCURRENT_TRANSMISSIONS,
                 sleep_threshold=30,
             )
             await perm_client.start()
@@ -297,7 +297,7 @@ class SessionManager:
                 f"user_session_{user_id}",
                 workers=100,
                 session_string=session_string,
-                max_concurrent_transmissions=1,
+                max_concurrent_transmissions=PyroConf.MAX_CONCURRENT_TRANSMISSIONS,
                 sleep_threshold=30,
             )
             await perm_client.start()

@@ -52,7 +52,7 @@ bot = Client(
     bot_token=PyroConf.BOT_TOKEN,
     workers=100,
     parse_mode=ParseMode.MARKDOWN,
-    max_concurrent_transmissions=1, # ✅ SAFE DEFAULT
+    max_concurrent_transmissions=PyroConf.MAX_CONCURRENT_TRANSMISSIONS,
     sleep_threshold=30,
 )
 
@@ -298,7 +298,7 @@ async def handle_download(bot: Client, message: Message, post_url: str, is_batch
             )
 
             if chat_message.media_group_id:
-                if not await processMediaGroup(chat_message, bot, message, is_batch=is_batch):
+                if not await processMediaGroup(chat_message, bot, message, is_batch=is_batch, user_client=user_client):
                     if not is_batch:
                         await message.reply(
                             "**Could not extract any valid media from the media group.**"
@@ -356,7 +356,24 @@ async def handle_download(bot: Client, message: Message, post_url: str, is_batch
                 await progress_message.delete()
 
             elif chat_message.text or chat_message.caption:
-                await message.reply(parsed_text or parsed_caption)
+                text_content = parsed_text or parsed_caption
+                if text_content:
+                    # If forward channel is set, send text to channel instead of user chat
+                    if PyroConf.FORWARD_CHANNEL_ID != 0:
+                        try:
+                            await bot.send_message(
+                                chat_id=PyroConf.FORWARD_CHANNEL_ID,
+                                text=text_content,
+                            )
+                            if not is_batch:
+                                await message.reply("✅ Text message forwarded to channel successfully!")
+                            LOGGER(__name__).info(f"Text forwarded to channel {PyroConf.FORWARD_CHANNEL_ID}")
+                        except Exception as e:
+                            LOGGER(__name__).error(f"Failed to forward text to channel: {e}")
+                            if not is_batch:
+                                await message.reply(f"❌ Failed to forward text to channel: {e}")
+                    else:
+                        await message.reply(text_content)
             else:
                 await message.reply("**No media or text found in the post URL.**")
 
@@ -425,7 +442,7 @@ async def download_range(bot: Client, message: Message):
     prefix = args[1].rsplit("/", 1)[0]
     loading = await message.reply(f"📥 **Downloading posts {start_id}–{end_id}…**")
 
-    downloaded = skipped = failed = 0
+    downloaded = skipped = failed = not_found = 0
     failed_ids = []  # Track which post IDs failed
     batch_tasks = []
     batch_msg_ids = []  # Track message IDs for current batch
@@ -435,8 +452,11 @@ async def download_range(bot: Client, message: Message):
         url = f"{prefix}/{msg_id}"
         try:
             chat_msg = await user_client.get_messages(chat_id=start_chat, message_ids=msg_id)
-            if not chat_msg:
-                skipped += 1
+            
+            # Check if message doesn't exist (empty message)
+            if not chat_msg or chat_msg.empty:
+                not_found += 1
+                LOGGER(__name__).debug(f"Message {msg_id} does not exist")
                 continue
 
             has_media = bool(chat_msg.media_group_id or chat_msg.media)
@@ -470,9 +490,14 @@ async def download_range(bot: Client, message: Message):
                 await asyncio.sleep(PyroConf.FLOOD_WAIT_DELAY)
 
         except Exception as e:
-            failed += 1
-            failed_ids.append(msg_id)
-            LOGGER(__name__).error(f"Error at {url}: {e}")
+            # Check if error indicates message doesn't exist
+            error_str = str(e).lower()
+            if "message" in error_str and ("not found" in error_str or "empty" in error_str or "invalid" in error_str):
+                not_found += 1
+            else:
+                failed += 1
+                failed_ids.append(msg_id)
+                LOGGER(__name__).error(f"Error at {url}: {e}")
 
     if batch_tasks:
         results = await asyncio.gather(*batch_tasks, return_exceptions=True)
@@ -492,6 +517,7 @@ async def download_range(bot: Client, message: Message):
             "━━━━━━━━━━━━━━━━━━━\n"
             f"📤 **Uploaded to channel** : `{downloaded}` file(s)\n"
             f"⏭️ **Skipped**              : `{skipped}` (no content)\n"
+            f"🔍 **Not found**            : `{not_found}` (message doesn't exist)\n"
             f"❌ **Failed**               : `{failed}` error(s)\n\n"
             f"📢 **Target Channel:** `{PyroConf.FORWARD_CHANNEL_ID}`"
         )
@@ -501,6 +527,7 @@ async def download_range(bot: Client, message: Message):
             "━━━━━━━━━━━━━━━━━━━\n"
             f"📥 **Downloaded** : `{downloaded}` post(s)\n"
             f"⏭️ **Skipped**    : `{skipped}` (no content)\n"
+            f"🔍 **Not found**  : `{not_found}` (message doesn't exist)\n"
             f"❌ **Failed**     : `{failed}` error(s)"
         )
     

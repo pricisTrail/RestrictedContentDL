@@ -33,7 +33,8 @@ class PyroConf(object):
     # Admin user ID to receive startup notifications (your Telegram user ID)
     ADMIN_ID = int(getenv("ADMIN_ID", "0"))
 
-    MAX_CONCURRENT_DOWNLOADS = int(getenv("MAX_CONCURRENT_DOWNLOADS", "3"))
+    # Max parallel downloads/uploads (higher = faster but more resource usage)
+    MAX_CONCURRENT_TRANSMISSIONS = int(getenv("MAX_CONCURRENT_TRANSMISSIONS", "3"))
     BATCH_SIZE = int(getenv("BATCH_SIZE", "10"))
     FLOOD_WAIT_DELAY = int(getenv("FLOOD_WAIT_DELAY", "3"))
 
